@@ -45,3 +45,15 @@ class Response(models.Model):
     poll = models.ForeignKey(OpinionPoll, on_delete=models.CASCADE)
     # ...
     
+class DahlBookManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(author="Roald Dahl")
+
+
+# Then hook it into the Book model explicitly.
+class Book(models.Model):
+    title = models.CharField(max_length=100)
+    author = models.CharField(max_length=50)
+
+    objects = models.Manager()  # The default manager.
+    dahl_objects = DahlBookManager()  # The Dahl-specific manager.
