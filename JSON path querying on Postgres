@@ -1,0 +1,140 @@
+**JSON path querying** feature in PostgreSQL, which allows you to use SQL-standard JSON path syntax to test whether certain elements exist in a JSON document.
+
+Let's break down your example step by step:
+
+```sql
+'{"a":[1,2,3,4,5]}'::jsonb @? '$.a[*] ? (@ > 2)'
+```
+
+---
+
+### 1. The `@?` operator
+
+* `@?` is the **“JSON path exists”** operator in PostgreSQL.
+* **Syntax:**
+
+  ```sql
+  jsonb @? jsonpath
+  ```
+* It **returns `true` (t)** if the JSON path expression **returns any items** from the JSON document.
+* It **returns `false` (f)** if the path does not match anything.
+
+> ✅ Important: It doesn’t return the matched data — only whether something matched or not.
+
+---
+
+### 2. The left side: the JSON value
+
+```sql
+'{"a":[1,2,3,4,5]}'::jsonb
+```
+
+This is a JSON object with one key `"a"`, which has an array of numbers as its value:
+
+```json
+{
+  "a": [1, 2, 3, 4, 5]
+}
+```
+
+---
+
+### 3. The right side: the JSON path
+
+```sql
+'$.a[*] ? (@ > 2)'
+```
+
+This is the **JSON path expression**. Let’s break it down:
+
+* `$.`
+  → Root object (start of the JSON document)
+
+* `a`
+  → Access the key `"a"`
+
+* `[*]`
+  → Iterate over each element of the array `a`
+
+* `? (@ > 2)`
+  → A **filter expression**:
+
+  * `@` refers to the **current element** of the array.
+  * `@ > 2` means “select only those elements where the value is greater than 2”.
+
+👉 So, effectively this path means:
+“Find elements in the array `a` that are greater than 2.”
+
+---
+
+### 4. How `@?` evaluates the path
+
+PostgreSQL will:
+
+* Iterate over `[1, 2, 3, 4, 5]`
+* Apply the filter `@ > 2`
+* Matches are `[3, 4, 5]`
+* Since matches exist, `@?` returns `true` (`t`).
+
+---
+
+### ✅ Final result
+
+```
+'{"a":[1,2,3,4,5]}'::jsonb @? '$.a[*] ? (@ > 2)'
+→ t
+```
+
+because there **are elements in the array greater than 2**.
+
+---
+
+### 📝 More examples for clarity:
+
+```sql
+-- No matches, returns false
+SELECT '{"a":[1,2]}'::jsonb @? '$.a[*] ? (@ > 2)';
+-- f
+
+-- Check if there is any element equal to 4
+SELECT '{"a":[1,2,3,4,5]}'::jsonb @? '$.a[*] ? (@ == 4)';
+-- t
+
+-- Check nested structures
+SELECT '{"a":[{"x":10},{"x":5}]}'::jsonb @? '$.a[*] ? (@.x > 8)';
+-- t
+```
+
+---
+
+### 💡 Tip: `@?` vs `@@`
+
+* `@?` → returns `true/false` if **any match exists**.
+* `@@` → evaluates the JSON path expression as a **predicate** directly.
+
+Example:
+
+```sql
+-- Using @?
+SELECT '{"a": 10}'::jsonb @? '$.a ? (@ == 10)';
+-- t
+
+-- Using @@
+SELECT '{"a": 10}'::jsonb @@ '$.a == 10';
+-- t
+```
+
+---
+
+✅ **Summary Table**
+
+| Part        | Meaning                                  |
+| ----------- | ---------------------------------------- |
+| `@?`        | Check if JSON path finds any result      |
+| `'$'`       | Root of JSON document                    |
+| `.a`        | Key `a`                                  |
+| `[*]`       | Iterate over array elements              |
+| `? (@ > 2)` | Filter: match elements greater than 2    |
+| Result      | `t` because `[3, 4, 5]` match the filter |
+
+---
